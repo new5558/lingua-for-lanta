@@ -9,7 +9,8 @@ fsspec
 blobfile
 wandb
 viztracer
-lm-eval
+# lm-eval
+git+https://github.com/new5558/lm-evaluation-harness-lanta
 scipy
 pynvml
 datatrove

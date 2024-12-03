@@ -23,18 +23,52 @@ class StoolArgs:
     )
     override: bool = False  # Wether to delete dump dir and restart
     nodes: int = -1  # The number of nodes to run the job on.
-    ngpu: int = 8  # The number of GPUs required per node.
-    ncpu: int = 16  # The number of CPUs allocated per GPU.
-    mem: str = ""  # The amount of memory to allocate.
+    # ngpu: int = 8  # The number of GPUs required per node.
+    # ncpu: int = 16  # The number of CPUs allocated per GPU.
+    # mem: str = ""  # The amount of memory to allocate.
     anaconda: str = "default"  # The path to the anaconda environment.
     constraint: str = ""  # The constraint on the nodes.
     exclude: str = ""  # The nodes to exclude.
-    time: int = -1  # The time limit of the job (in minutes).
+    time: str = ""  # The time limit of the job (in minutes).
     account: str = ""
     qos: str = ""
     partition: str = "learn"
     stdout: bool = False
+    project_name: str = ""
 
+
+# SBATCH_COMMAND = """#!/bin/bash
+
+# {exclude}
+# {qos}
+# {account}
+# {constraint}
+# #SBATCH --job-name={name}
+# #SBATCH --nodes={nodes}
+# #SBATCH --gres=gpu:{ngpus}
+# #SBATCH --cpus-per-gpu={ncpu}
+# #SBATCH --time={time}
+# #SBATCH --partition={partition}
+# #SBATCH --mem={mem}
+
+# #SBATCH --output={dump_dir}/logs/%j/%j.stdout
+# #SBATCH --error={dump_dir}/logs/%j/%j.stderr
+
+# #SBATCH --open-mode=append
+# #SBATCH --signal=USR2@120
+# #SBATCH --distribution=block
+
+# # Mimic the effect of "conda init", which doesn't work for scripts
+# eval "$({conda_exe} shell.bash hook)"
+# source activate {conda_env_path}
+
+# {go_to_code_dir}
+
+# export OMP_NUM_THREADS=1
+# export LAUNCH_WITH="SBATCH"
+# export DUMP_DIR={dump_dir}
+# srun {log_output} -n {tasks} -N {nodes_per_run} python -u -m {script} config=$DUMP_DIR/base_config.yaml
+# """
 
 SBATCH_COMMAND = """#!/bin/bash
 
@@ -43,18 +77,13 @@ SBATCH_COMMAND = """#!/bin/bash
 {account}
 {constraint}
 #SBATCH --job-name={name}
-#SBATCH --nodes={nodes}
-#SBATCH --gres=gpu:{ngpus}
-#SBATCH --cpus-per-gpu={ncpu}
-#SBATCH --time={time}
+#SBATCH -t {time}
 #SBATCH --partition={partition}
-#SBATCH --mem={mem}
-
-#SBATCH --output={dump_dir}/logs/%j/%j.stdout
-#SBATCH --error={dump_dir}/logs/%j/%j.stderr
-
-#SBATCH --open-mode=append
-#SBATCH --signal=USR2@120
+#SBATCH -A {project_name}                 # Specify project name
+#SBATCH -N {nodes_per_run} -c 16
+#SBATCH --gpus={gpus}
+#SBATCH --output={dump_dir}/logs/%j.stdout
+#SBATCH --error={dump_dir}/logs/%j.stderr
 #SBATCH --distribution=block
 
 # Mimic the effect of "conda init", which doesn't work for scripts
@@ -65,8 +94,8 @@ source activate {conda_env_path}
 
 export OMP_NUM_THREADS=1
 export LAUNCH_WITH="SBATCH"
-export DUMP_DIR={dump_dir}
-srun {log_output} -n {tasks} -N {nodes_per_run} python -u -m {script} config=$DUMP_DIR/base_config.yaml
+export HF_HUB_OFFLINE=1
+srun -n {gpus} python -u -m {script} config=../base_config.yaml
 """
 
 
@@ -76,6 +105,7 @@ def copy_dir(input_dir: str, output_dir: str) -> None:
     assert os.path.isdir(output_dir), f"{output_dir} is not a directory"
     rsync_cmd = (
         f"rsync -arm --copy-links "
+        f'--exclude=".*/" '  # Explicitly exclude directories starting with a dot ex. .conda/
         f"--include '**/' "
         f"--include '*.py' "
         f"--exclude='*' "
@@ -86,35 +116,7 @@ def copy_dir(input_dir: str, output_dir: str) -> None:
     print("Copy done.")
 
 
-def retrieve_max_time_per_partition() -> Dict[str, int]:
-    # retrieve partition max times (a bit slow)
-
-    sinfo = json.loads(subprocess.check_output("sinfo --json", shell=True))["sinfo"]
-    max_times: Dict[str, int] = {}
-
-    for info in sinfo:
-        if info["partition"]["maximums"]["time"]["infinite"]:
-            max_times[info["partition"]["name"]] = 14 * 24 * 60  # 14 days
-        else:
-            max_times[info["partition"]["name"]] = info["partition"]["maximums"][
-                "time"
-            ][
-                "number"
-            ]  # in minutes
-
-    return max_times
-
-
 def validate_args(args) -> None:
-    # Set maximum time limit if not specified
-    if args.time == -1:
-        max_times = retrieve_max_time_per_partition()
-        args.time = max_times.get(
-            args.partition, 3 * 24 * 60
-        )  # Default to 3 days if not found
-        print(
-            f"No time limit specified, using max time for partitions: {args.time} minutes"
-        )
 
     if args.constraint:
         args.constraint = f"#SBATCH --constraint={args.constraint}"
@@ -139,13 +141,15 @@ def validate_args(args) -> None:
             args.anaconda = f"{args.anaconda}/bin/python"
         assert os.path.isfile(args.anaconda)
 
-    args.mem = args.mem or "0"
+    # args.mem = args.mem or "0"
+
+    assert args.project_name != ''
 
     assert args.partition
-    assert args.ngpu > 0
-    assert args.ncpu > 0
+    # assert args.ngpu > 0
+    # assert args.ncpu > 0
     assert args.nodes > 0
-    assert args.time > 0
+    assert args.time != ''
     assert args.partition
 
 
@@ -170,6 +174,7 @@ def launch_job(args: StoolArgs):
         os.makedirs(f"{dump_dir}/code", exist_ok=args.dirs_exists_ok)
         print("Copying code ...")
         copy_dir(os.getcwd(), f"{dump_dir}/code")
+        os.mkdir(os.path.join(f"{dump_dir}", 'logs'))
 
     print("Saving config file ...")
     with open(f"{dump_dir}/base_config.yaml", "w") as cfg:
@@ -187,11 +192,13 @@ def launch_job(args: StoolArgs):
         script=args.script,
         dump_dir=dump_dir,
         nodes=args.nodes,
-        tasks=args.nodes * args.ngpu,
+        # tasks=args.nodes * args.ngpu,
         nodes_per_run=args.nodes,
-        ngpus=args.ngpu,
-        ncpu=args.ncpu,
-        mem=args.mem,
+        gpus=args.nodes*4,
+        # ngpus=args.ngpu,
+        # ncpu=args.ncpu,
+        # mem=args.mem,
+        project_name=args.project_name,
         qos=args.qos,
         account=args.account,
         constraint=args.constraint,
