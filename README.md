@@ -51,6 +51,20 @@ sh setup/prepare_eval_data_lanta.sh <conda_path>
 
 - Eval datasets will be downloaded to `<current_directory>/data/<dataset_name>` each datasets will have one folder
 
+#### Activate Conda Environment
+
+```sh
+ml purge
+ml Mamba/23.11.0-0
+conda deactivate
+conda activate <conda_path>
+```
+
+ml purge
+ml Mamba/23.11.0-0
+conda deactivate
+conda activate /project/lt200304-dipmt/new_norapat/.conda-latest/lingua_conda
+
 ### Pre-training
 
 Edit `lanta_pretrain.yaml` and run slurm job
@@ -61,34 +75,26 @@ python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_pre
 
 ### Fine-tuning
 
-Download checkpoint from Huggingface
+### Download checkpoint from Huggingface
 
 ```sh
-sh setup/download_llama_hf.sh <REPO_ID> <DOWNLOAD_PATH>
+sh setup/download_hf_model.sh <conda_path> <REPO_ID> <DOWNLOAD_PATH>
 ```
 
-`REPO_ID` should be a varaint of Llama3 models family. In this demo we will use [Llama-3.2-1B](https://huggingface.co/meta-llama/Llama-3.2-1B)
+- `<REPO_ID>` should be a varaint of Llama3 models family. In this demo we will use [Llama-3.2-1B](https://huggingface.co/meta-llama/Llama-3.2-1B)
+- `<DOWNLOAD_PATH>` is where the model will be downloaded into
 
-Convert Checkpoint to [DCP](https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html) format
+#### Convert Checkpoint to DCP [DCP](https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html) format
 
 ```sh
-sh setup/convert_hf_checkpoint.sh <DOWNLOAD_PATH>
+sh setup/convert_hf_checkpoint.sh <conda_path< <DOWNLOAD_PATH>
 ```
 
-`DOWNLOAD_PATH` is the same path we downloaded checkpoint from Huggingface.
+`<DOWNLOAD_PATH>` is the same path we downloaded checkpoint from Huggingface.
 Output will be at `<DOWNLOAD_PATH>-converted`
 
-Edit `lanta_finetune_1B.yaml` and run slurm job
+#### Edit `lanta_finetune_1B.yaml` and run slurm job
 
 ```sh
 python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B.yaml nodes=<num_nodes> partition=gpu project_name=<project_name> time=02:00:00
-```
-
-#### Activate Conda Environment
-
-```sh
-ml purge
-ml Mamba/23.11.0-0
-conda deactivate
-conda activate <path_to_store_conda_environment>
 ```
