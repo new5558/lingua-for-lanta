@@ -1,52 +1,57 @@
-## Lingua Refectored for Lanta
+# Lingua Modified for Lanta
 
 This is lingua refactored for Lanta HPC Cluster.
-The original readme of this repository [HERE](README_original.md)
+The original readme of this repository is [HERE](README_original.md)
 
-### Changes log
+## Changelog
 
 1. Removed `unlimit` command from code because Lanta don't have permission to change shell resource limit
-2. modified script to create environement specifically made for Lanta: `create_env_lanta.sh`
-3. created script to download training data and tokenizer `setup/prepare_data_lanta.sh`, `setup/prepare_tokenizer_lanta.sh`
-4. modify code to not download eval dataset on the file because Lanta gpu node do not have internet connection.
+2. created script to create environement specifically made for Lanta: `create_env_lanta.sh`
+3. created script to download training data and tokenizer `setup/download_prepare_hf_data.sh`, `setup/prepare_tokenizer_lanta.sh`
+4. modified code to not download eval dataset on the file because Lanta gpu node do not have internet connection.
    `setup/download_eval_datasets_lanta.py` and `setup/prepare_eval_data_lanta.sh` specifically made for Lanta.
-5. Used [Custom version of lm-eval](https://github.com/new5558/lm-evaluation-harness-lanta) that support loading dataset from disk
+5. Replace `lm-eval` with [Custom version of lm-eval](https://github.com/new5558/lm-evaluation-harness-lanta) that support loading dataset from disk
 6. Add Fine-tuning tutorial and with additional support scripts: `setup/convert_hf_checkpoint.sh` and `setup/download_hf_model.sh`
-7. Add Fine-tuning 1B Llama3 and Pre-traning configuration example
+7. Add Fine-tuning 1B Llama3 and Pre-traning configuration example.
 
-### Set up
+## Set up
+
+#### Create Conda Environment
 
 ```sh
 sh setup/create_env_lanta.sh <path_to_store_conda_environment>
 ```
 
 - `<path_to_store_conda_environment>`: Recommend putting the environement path outside of lingua folder to avoid stool.py indexing when running train script.
+- `<conda_path>` will be created at `<path_to_store_conda_environment>/lingua_conda`
 
-Activate Conda Environment:
-
-```sh
-conda activate <path_to_store_conda_environment>
-```
-
-Download training data from Huggingface:
+#### Download training data from Huggingface
 
 ```sh
-sh setup/prepare_data_lanta.sh <path_to_store_conda_environment>
+sh setup/download_prepare_hf_data.sh <conda_path> <data_repo>
 ```
 
-Download tokenizer from Huggingface:
+- `<data_repo>` Can be one of `"fineweb_edu", "fineweb_edu_10bt", "dclm_baseline_1.0", "dclm_baseline_1.0_10prct"` Please choose `fineweb_edu_10bt` for this tutorial because it use less disk space.
+- Training dataset will be downloaded to `<current_directory>/data/<data_repo>_shuffled`
+
+#### Download tokenizer from Huggingface
 
 ```sh
-sh setup/prepare_tokenizer_lanta.sh <path_to_store_conda_environment> <huggingface_privatekey>
+sh setup/prepare_tokenizer_lanta.sh <conda_path> <huggingface_privatekey>
 ```
 
-Download eval data from Huggingface:
+- Get Hugginface private key from this [link](https://huggingface.co/settings/tokens)
+- Tokenizer will be saved to `<tokenizer_path>` = `<current_directory>/tokenizer_file`
+
+#### Download eval data from Huggingface
 
 ```sh
-sh setup/prepare_eval_data_lanta.sh <path_to_store_conda_environment>
+sh setup/prepare_eval_data_lanta.sh <conda_path>
 ```
 
-#### Pre-training
+- Eval datasets will be downloaded to `<current_directory>/data/<dataset_name>` each datasets will have one folder
+
+### Pre-training
 
 Edit `lanta_pretrain.yaml` and run slurm job
 
@@ -54,7 +59,7 @@ Edit `lanta_pretrain.yaml` and run slurm job
 python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_pretrain.yaml nodes=<num_nodes> partition=gpu project_name=<project_name> time=02:00:00
 ```
 
-#### Fine-tuning
+### Fine-tuning
 
 Download checkpoint from Huggingface
 
@@ -77,4 +82,13 @@ Edit `lanta_finetune_1B.yaml` and run slurm job
 
 ```sh
 python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B.yaml nodes=<num_nodes> partition=gpu project_name=<project_name> time=02:00:00
+```
+
+#### Activate Conda Environment
+
+```sh
+ml purge
+ml Mamba/23.11.0-0
+conda deactivate
+conda activate <path_to_store_conda_environment>
 ```

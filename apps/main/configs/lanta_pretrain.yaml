@@ -36,7 +36,7 @@ data:
   load_async: true
   tokenizer:
     name: tiktoken
-    path: <full path of tokenizer.model>
+    path: <tokenizer_path> = <full path to tokenizer.model>
 
 profiling:
   run: true
