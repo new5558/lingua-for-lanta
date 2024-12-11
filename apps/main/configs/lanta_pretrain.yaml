@@ -35,7 +35,7 @@ data:
   n_views: 2
   load_async: true
   tokenizer:
-    name: bytes
+    name: tiktoken
     path: <full path of tokenizer.model>
 
 profiling:
@@ -62,8 +62,11 @@ eval:
     tasks:
       - task: piqa
         dataset_path: <full path to piqa>
-      - task: nq_open
-        dataset_path: <full path to nq_open>
-        num_fewshot: 5
+      # TODO: Investigate why nq_open has error on Lanta
+      # - task: nq_open
+      #   dataset_path: <full path to nq_open>
+      #   num_fewshot: 5
       - task: hellaswag
         dataset_path: <full path to hellaswag>
+  validation:
+    max_steps: 100

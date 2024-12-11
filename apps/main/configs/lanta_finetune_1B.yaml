@@ -20,10 +20,13 @@ distributed:
   # dp_shard: 4 # number of model shard (Number of GPUs in one node)
   # dp_replicate: 4 # number of data parallel copy (Number of nodes in training run)
 
+# From https://huggingface.co/meta-llama/Llama-3.2-1B/blob/main/original/params.json
 model:
   dim: 2048
-  n_layers: 25
-  n_heads: 16
+  n_layers: 16
+  n_heads: 32
+  n_kv_heads: 8
+  ffn_dim_multiplier: 1.5
 
 data:
   # root_dir: data/fineweb_edu_10bt
@@ -36,7 +39,7 @@ data:
   n_views: 2
   load_async: true
   tokenizer:
-    name: bytes
+    name: tiktoken
     path: <full path of tokenizer.model>
 
 profiling:
@@ -63,8 +66,11 @@ eval:
     tasks:
       - task: piqa
         dataset_path: <full path to piqa>
-      - task: nq_open
-        dataset_path: <full path to nq_open>
-        num_fewshot: 5
+      # TODO: Investigate why nq_open has error on Lanta
+      # - task: nq_open
+      #   dataset_path: <full path to nq_open>
+      #   num_fewshot: 5
       - task: hellaswag
         dataset_path: <full path to hellaswag>
+  validation:
+    max_steps: 100
