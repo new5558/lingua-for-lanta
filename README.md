@@ -31,7 +31,7 @@ sh setup/create_env_lanta.sh <path_to_store_conda_environment>
 sh setup/download_prepare_hf_data.sh <conda_path> <data_repo>
 ```
 
-- `<data_repo>` Can be one of `"fineweb_edu", "fineweb_edu_10bt", "dclm_baseline_1.0", "dclm_baseline_1.0_10prct"` Please choose `fineweb_edu_10bt` for this tutorial because it use less disk space.
+- `<data_repo>` Can be one of `"fineweb_edu", "fineweb_edu_10bt", "dclm_baseline_1.0", "dclm_baseline_1.0_10prct", "dummy_zhth"` Please choose `fineweb_edu_10bt` or `dummy_zhth` for this tutorial because it use less disk space.
 - Training dataset will be downloaded to `<current_directory>/data/<data_repo>_shuffled`
 
 #### Download tokenizer from Huggingface
@@ -98,3 +98,13 @@ Output will be at `<DOWNLOAD_PATH>-converted`
 ```sh
 python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B.yaml nodes=<num_nodes> partition=gpu project_name=<project_name> time=02:00:00
 ```
+
+### Push to hub
+
+```sh
+sh setup/convert_dcp_checkpoint.sh <CONDA_PATH> <LINGUA_CHECKPOINT_PATH> <TOKENIZER_PATH> <HF_TOKEN> <PUSH_HF_REPO>
+```
+
+- `<LINGUA_CHECKPOINT_PATH>` example: ./checkpoints/0000000300
+- `<TOKENIZER_PATH>` example: ./tokenizer_file/original/tokenizer.model
+- `<PUSH_HF_REPO>` hf repository example: lst-nectec/llama-1b-finetuned

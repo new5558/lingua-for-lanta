@@ -36,7 +36,7 @@ def download_dataset(repo_id, local_dir, allow_patterns):
     print(f"Dataset downloaded to {local_dir}")
 
 
-def parquet_to_jsonl(dataset, work_dir, src_dir, tgt_dir, ntasks=64):
+def parquet_to_jsonl(dataset, work_dir, src_dir, tgt_dir, adapter=None, ntasks=64):
     from datatrove.executor import LocalPipelineExecutor
     from datatrove.pipeline.readers import ParquetReader
     from datatrove.pipeline.writers import JsonlWriter
@@ -48,6 +48,32 @@ def parquet_to_jsonl(dataset, work_dir, src_dir, tgt_dir, ntasks=64):
                 file_progress=True,
                 doc_progress=True,
                 glob_pattern="**/*.parquet",
+                adapter=adapter,
+            ),
+            JsonlWriter(
+                tgt_dir,
+                output_filename=dataset + ".chunk.${rank}.jsonl",
+                compression=None,
+            ),
+        ],
+        tasks=ntasks,
+        logging_dir=os.path.join(work_dir, "datatrove"),
+    )
+    pipeline_exec.run()
+
+def csv_to_jsonl(dataset, work_dir, src_dir, tgt_dir, adapter=None, ntasks=64):
+    from datatrove.executor import LocalPipelineExecutor
+    from datatrove.pipeline.readers import CSVReader
+    from datatrove.pipeline.writers import JsonlWriter
+
+    pipeline_exec = LocalPipelineExecutor(
+        pipeline=[
+            CSVReader(
+                src_dir,
+                file_progress=True,
+                doc_progress=True,
+                glob_pattern="**/*.csv",
+                adapter=adapter,
             ),
             JsonlWriter(
                 tgt_dir,
@@ -82,6 +108,7 @@ def main(dataset, memory, data_dir, seed=42, nchunks=32):
         "fineweb_edu_10bt": "HuggingFaceFW/fineweb-edu",
         "dclm_baseline_1.0": "mlfoundations/dclm-baseline-1.0",
         "dclm_baseline_1.0_10prct": "mlfoundations/dclm-baseline-1.0",
+        "dummy_zhth": "peerachet/dummy_zhth",
     }[dataset]
     src_dir = f"{data_dir}/{dataset}"
     out_dir = f"{src_dir}_shuffled"
@@ -93,21 +120,26 @@ def main(dataset, memory, data_dir, seed=42, nchunks=32):
         "fineweb_edu_10bt": ".jsonl",
         "dclm_baseline_1.0": ".jsonl.zst",
         "dclm_baseline_1.0_10prct": ".jsonl.zst",
+        "dummy_zhth": ".jsonl",
     }[dataset]
     cat_command = {
         "fineweb_edu": "cat",
         "fineweb_edu_10bt": "cat",
         "dclm_baseline_1.0": "zstdcat",
         "dclm_baseline_1.0_10prct": "zstdcat",
+        "dummy_zhth": "cat",
     }[dataset]
     allow_patterns = {
         "fineweb_edu": None,
         "fineweb_edu_10bt": "sample/10BT/*",
         "dclm_baseline_1.0": "*.jsonl.zst",
         "dclm_baseline_1.0_10prct": "global-shard_01_of_10/*.jsonl.zst",
+        "dummy_zhth": None,
     }[dataset]
     suffix = ".jsonl"
     k_validation = 10000  # Number of lines to take from each chunk for validation
+    if "dummy" in dataset:
+        k_validation = 1  # Number of lines to take from each chunk for validation
 
     # Setup terashuf
     terashuf_dir = setup_terashuf(work_dir)
@@ -117,6 +149,22 @@ def main(dataset, memory, data_dir, seed=42, nchunks=32):
 
     if "fineweb" in dataset:
         parquet_to_jsonl(dataset, work_dir, src_dir, src_dir)
+    
+    if "dummy" in dataset:
+        TH_ZH_PROMPT_TEMPLATE = '\n'.join((
+            "Please translate this sentence in Thai to Chinese",
+            "TH : {thai}",
+            "ZH : {chinese}"
+        ))
+        def dummy_adapter(self, data: dict, path: str, id_in_file: int | str):
+            return {
+                "text": TH_ZH_PROMPT_TEMPLATE.format_map({
+                    "thai": data['Thai'],
+                    "chinese": data['Chinese'],
+                }),
+                'id': id_in_file,
+            }
+        csv_to_jsonl(dataset, work_dir, src_dir, src_dir, adapter=dummy_adapter)
 
     # Set up environment variables
     os.environ["MEMORY"] = f"{memory}"
