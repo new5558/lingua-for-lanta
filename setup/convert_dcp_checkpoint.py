@@ -1,7 +1,6 @@
 import argparse
 
 import torch
-import torch.distributed.checkpoint as load_state_dict
 
 
 def main(input_path, output_path):
