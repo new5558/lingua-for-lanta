@@ -13,6 +13,8 @@ The original readme of this repository is [HERE](README_original.md)
 5. Replace `lm-eval` with [Custom version of lm-eval](https://github.com/new5558/lm-evaluation-harness-lanta) that support loading dataset from disk
 6. Add Fine-tuning tutorial and with additional support scripts: `setup/convert_hf_checkpoint.sh` and `setup/download_hf_model.sh`
 7. Add Fine-tuning 1B Llama3 and Pre-traning configuration example.
+8. Fixed Memory leak in evaluation steps
+9. Fixed Multinode training on Lanta
 
 ## Set up
 
@@ -98,6 +100,8 @@ Output will be at `<DOWNLOAD_PATH>-converted`
 ```sh
 python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B.yaml nodes=<num_nodes> partition=gpu project_name=<project_name> time=02:00:00
 ```
+
+python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B.yaml nodes=2 partition=gpu project_name=lt200304 time=02:00:00
 
 ### Push to hub
 
