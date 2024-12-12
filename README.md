@@ -15,6 +15,7 @@ The original readme of this repository is [HERE](README_original.md)
 7. Add Fine-tuning 1B Llama3 and Pre-traning configuration example.
 8. Fixed Memory leak in evaluation steps
 9. Fixed Multinode training on Lanta
+10. Add custom dataset [dummy_zhth](https://huggingface.co/datasets/peerachet/dummy_zhth) support for the original data processing script.
 
 ## Set up
 
