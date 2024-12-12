@@ -240,7 +240,7 @@ def train(args: TrainArgs):
         dp_degree = dp_mesh.size()
         dp_rank = dp_mesh.get_local_rank()
         if args.distributed.dp_shard > 1:
-            dp_rank = dp_rank * dp_degree + world_mesh["dp_shard"].get_local_rank()
+            dp_rank = dp_rank * world_mesh["dp_shard"].size() + world_mesh["dp_shard"].get_local_rank() # [0-7] * 8 + [0-3] = [0-59]
             dp_degree *= world_mesh["dp_shard"].size()
 
         logger.info(f"Running on dp rank : {dp_rank}")
