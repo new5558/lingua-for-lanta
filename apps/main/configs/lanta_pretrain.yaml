@@ -19,7 +19,11 @@ distributed:
   selective_activation_checkpointing: false
   tp_size: 1 # number of tensor parallel (Megatron equavalent)
   dp_shard: 4 # number of model shard (Number of GPUs in one node)
-  dp_replicate: 1 # number of data parallel copy (Number of nodes in training run)
+  dp_replicate: 1 # number of data parallel copy (Number of nodes in training run),
+
+  # NOTE: Can try set dp_shard = Number of all gpus ex. 16, and dp_replicate = 1,
+  # when training big models to reduce memory footprint
+  # Tested with 1B models, 2 Node (8 GPUs) and can reduce memory footrpint by 2 GB per GPU without significantly degrading FLOPS
 
 model:
   dim: 2048
@@ -30,7 +34,7 @@ data:
   root_dir: <full path that store data folder = [ABSOLUTE_PATH_CURRENT_DIR]/data>
   sources:
     fineweb_edu_10bt_shuffled: 1.0 # change this to dataset folder inside data root_dir
-  batch_size: 2
+  batch_size: 4
   prefetch_size: 1024
   seq_len: 2048
   n_views: 2
