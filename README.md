@@ -62,11 +62,6 @@ conda deactivate
 conda activate <conda_path>
 ```
 
-ml purge
-ml Mamba/23.11.0-0
-conda deactivate
-conda activate /project/lt200304-dipmt/new_norapat/.conda-latest/lingua_conda
-
 ### Pre-training
 
 Edit `lanta_pretrain.yaml` and run slurm job
@@ -77,7 +72,7 @@ python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_pre
 
 ### Fine-tuning
 
-### Download checkpoint from Huggingface
+#### Download checkpoint from Huggingface
 
 ```sh
 sh setup/download_hf_model.sh <conda_path> <REPO_ID> <DOWNLOAD_PATH>
@@ -92,16 +87,14 @@ sh setup/download_hf_model.sh <conda_path> <REPO_ID> <DOWNLOAD_PATH>
 sh setup/convert_hf_checkpoint.sh <conda_path< <DOWNLOAD_PATH>
 ```
 
-`<DOWNLOAD_PATH>` is the same path we downloaded checkpoint from Huggingface.
-Output will be at `<DOWNLOAD_PATH>-converted`
+- `<DOWNLOAD_PATH>` is the same path we downloaded checkpoint from Huggingface.
+  Output will be at `<DOWNLOAD_PATH>-converted`
 
 #### Edit `lanta_finetune_1B.yaml` and run slurm job
 
 ```sh
 python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B.yaml nodes=<num_nodes> partition=gpu project_name=<project_name> time=02:00:00
 ```
-
-python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B.yaml nodes=2 partition=gpu project_name=lt200304 time=02:00:00
 
 ### Push to hub
 
