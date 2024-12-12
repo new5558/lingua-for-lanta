@@ -280,7 +280,8 @@ def launch_eval(cfg: EvalArgs):
                 file=open(val_log_path, mode="a"),
                 flush=True,
             )
-    
+    model.cpu()
+    del model
     del generator
 
 
