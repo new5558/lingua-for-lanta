@@ -11,6 +11,7 @@ import os
 from sentencepiece import SentencePieceProcessor
 import tiktoken
 from tiktoken.load import load_tiktoken_bpe
+from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,59 @@ class TikTokenTokenizer(Tokenizer):
         substrs = [text[s:e] for s, e in zip(offsets, offsets[1:] + [None])]
         return substrs, offsets
 
+# Fromv individual contributor: zhengyang-wang: https://github.com/facebookresearch/lingua/issues/32
+class HuggingFaceTokenizer(Tokenizer):
+    def __init__(self, model_path):
+        self.hf_tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+        logger.info(f"Reloaded HFTokenizer model from {model_path}")
+
+        self.bos_id: int = -1
+        if self.hf_tokenizer.bos_token is not None:
+            self.bos_id = self.hf_tokenizer.encode(self.hf_tokenizer.bos_token)[0]
+        
+        self.eos_id: int = -1
+        if self.hf_tokenizer.eos_token is not None:
+            self.eos_id: int = self.hf_tokenizer.encode(self.hf_tokenizer.eos_token)[0]
+        
+        self.n_words: int = max(self.hf_tokenizer.vocab.values())+1
+
+    def encode(self, tokens, add_bos, add_eos):
+        assert type(tokens) is str
+        if self.bos_id == -1:
+            add_bos = False
+        if self.eos_id == -1:
+            add_eos = False
+
+        return (
+            [self.bos_id] * add_bos
+            + self.hf_tokenizer.encode(tokens)
+            + [self.eos_id] * add_eos
+        )
+
+    def decode(self, tokens):
+        return self.hf_tokenizer.decode(tokens)
+
+    def get_token_offsets(self, text, tokens=None):
+        # This implementation comes from GPT-4o
+        # Use the encode_plus method to get token offsets
+        encoded_output = self.hf_tokenizer.encode_plus(
+            text,
+            return_offsets_mapping=True,  # To get the offsets
+            add_special_tokens=False  # Avoid adding special tokens like BOS/EOS in this method
+        )
+        
+        # Extract the offsets (a list of tuples with start and end positions)
+        offsets = encoded_output["offsets_mapping"]
+        
+        # Extract the tokenized substrings
+        substrs = [text[start:end] for start, end in offsets]
+
+        # Extract the starting positions from the offset tuples
+        start_offsets = [start for start, _ in offsets]
+
+        return substrs, start_offsets
+
 
 def build_tokenizer(name: str, path: Optional[str] = None) -> Tokenizer:
     if name == "bytes":
@@ -196,5 +250,7 @@ def build_tokenizer(name: str, path: Optional[str] = None) -> Tokenizer:
         return SentencePieceTokenizer(path)
     elif name == "tiktoken":
         return TikTokenTokenizer(path)
+    elif name == "huggingface":
+        return HuggingFaceTokenizer(path)
     else:
         raise NotImplementedError(f"{name} tokenizer type is not implemented")

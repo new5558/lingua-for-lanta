@@ -46,6 +46,8 @@ class BaseTransformerArgs:
     init_std_factor: str = "disabled"
 
     max_seqlen: int = 1024
+    
+    attention_bias: bool = False
 
 
 def cross_entropy(pred, target, **kwargs):
@@ -300,6 +302,7 @@ class Attention(nn.Module):
         n_heads: int,
         n_kv_heads: int,
         rope_theta: float,
+        attention_bias: bool,
     ):
         super().__init__()
 
@@ -314,17 +317,17 @@ class Attention(nn.Module):
         self.wq = nn.Linear(
             dim,
             n_heads * head_dim,
-            bias=False,
+            bias=attention_bias,
         )
         self.wk = nn.Linear(
             dim,
             n_kv_heads * head_dim,
-            bias=False,
+            bias=attention_bias,
         )
         self.wv = nn.Linear(
             dim,
             n_kv_heads * head_dim,
-            bias=False,
+            bias=attention_bias,
         )
 
         self.wo = nn.Linear(
@@ -502,6 +505,7 @@ class TransformerBlock(nn.Module):
             n_heads=self.n_heads,
             n_kv_heads=self.n_kv_heads,
             rope_theta=args.rope_theta,
+            attention_bias=args.attention_bias
         )
         self.feed_forward = FeedForward(
             dim=args.dim,
@@ -520,7 +524,6 @@ class TransformerBlock(nn.Module):
         mask: Optional[Union[BlockMask, AttentionBias, str]] = None,
         attn_impl: str = "sdpa",
     ) -> torch.Tensor:
-
         h = x + self.attention(
             self.attention_norm(x),
             freq_cis,

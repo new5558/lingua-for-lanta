@@ -4,4 +4,4 @@
 slurm-*.out
 wandb
 /data
-/tokenizer_file
+/tokenizer_file*

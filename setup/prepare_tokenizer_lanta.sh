@@ -6,14 +6,15 @@ set -e
 
 
 # Check if exactly two arguments are provided
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <arg1> <arg2>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <arg1> <arg2> <arg3>"
     exit 1
 fi
 
 # Assign the arguments to variables
 CONDA_PATH=$1
 HUGGINGFACE_API=$2
+TOKENIZER_NAME=$3
 
 tokenizer_path=./tokenizer_file
 
@@ -23,4 +24,4 @@ ml Mamba/23.11.0-0
 conda deactivate
 conda activate $CONDA_PATH
 
-python setup/download_tokenizer.py llama3 "$tokenizer_path" --api_key  $HUGGINGFACE_API
+python setup/download_tokenizer.py $TOKENIZER_NAME "${tokenizer_path}_${TOKENIZER_NAME}" --api_key  $HUGGINGFACE_API

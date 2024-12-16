@@ -86,15 +86,29 @@ SBATCH_COMMAND = """#!/bin/bash
 #SBATCH --error={dump_dir}/logs/%j.stderr
 #SBATCH --distribution=block
 
+# module load PrgEnv-gnu
+# module load cpe-cuda
+# module load craype-accel-nvidia80
+# module load aws-ofi-nccl
+
+
+module load PrgEnv-nvhpc/8.4.0
+module load craype-accel-nvidia80
+module load aws-ofi-nccl
+
 # Mimic the effect of "conda init", which doesn't work for scripts
 eval "$({conda_exe} shell.bash hook)"
 source activate {conda_env_path}
 
 {go_to_code_dir}
 
+export NCCL_SOCKET_NTHREADS=4
+export NCCL_NSOCKS_PERTHREAD=4
+
 export OMP_NUM_THREADS=1
 export LAUNCH_WITH="SBATCH"
 export HF_HUB_OFFLINE=1
+# srun -n {gpus} nsys profile --stats=true python -u -m {script} config=../base_config.yaml
 srun -n {gpus} python -u -m {script} config=../base_config.yaml
 """
 
