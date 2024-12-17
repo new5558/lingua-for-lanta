@@ -1,0 +1,87 @@
+dump_dir: <full path to copy current codebase to>
+name: "finetune_4node" # Minimum Requirement for 7B Qwen = 4 nodes
+steps: 2000
+# probe_freq: 100 # Recommend turn off probing to help with memroy
+seed: 777
+grad_acc_steps: 1
+optim:
+  lr: 3e-4
+  warmup: 2000
+  lr_min_ratio: 0.000001
+  clip: 10.0
+
+distributed:
+  fsdp_type: full_shard
+  # fsdp_type: no_shard
+  compile: true
+  model_dtype: bf16
+  matmul_allow_tf32: false
+  selective_activation_checkpointing: false
+  tp_size: 1 # number of tensor parallel (Megatron equavalent)
+  dp_shard: 16 # number of model shard (Number of GPUs in one node)
+  dp_replicate: 1 # number of data parallel copy (Number of nodes in training run)
+
+  # NOTE: Can try set dp_shard = Number of all gpus ex. 16, and dp_replicate = 1,
+  # when training big models to reduce memory footprint
+  # Tested with 1B models, 2 Node (8 GPUs) and can reduce memory footrpint by 2 GB per GPU without significantly degrading FLOPS
+
+# From https://huggingface.co/Qwen/Qwen2.5-7B/blob/main/config.json
+model:
+  dim: 3584
+  n_layers: 28
+  n_heads: 28
+  n_kv_heads: 4
+  ffn_dim_multiplier: 1.98
+  attention_bias: true
+  rope_theta: 1000000.0
+  norm_eps: 1.0E-6
+  weight_tying: true
+
+data:
+  root_dir: <full path that store data folder = [ABSOLUTE_PATH_CURRENT_DIR]/data>
+  sources:
+    # fineweb_edu_10bt_shuffled: 1.0
+    dummy_zhth_shuffled: 1.0
+  batch_size: 1
+  prefetch_size: 1024
+  seq_len: 2048
+  n_views: 2
+  load_async: true
+  tokenizer:
+    name: huggingface
+    path: <tokenizer_path> = <full huggingface path (should have tokenizer.json file)>
+  add_bos: false # QWEN's tokenizer don't have BOS
+
+profiling:
+  run: false # Off to help with memory
+
+checkpoint:
+  init_ckpt_path: <path to consolidated checkpoint to resume>
+  dump:
+    every: 100
+    keep: 1
+  eval:
+    every: 3000 # Basically turned off evaluation to reduce memory footprint
+    keep: 1
+
+logging:
+  freq: 10
+
+eval:
+  generator:
+    max_tokens: 2048 # default 8192, reduced to prevent OOM
+    dtype: bf16
+    temperature: 1.0
+    top_p: 0.95
+  harness:
+    tasks:
+      - task: piqa
+        dataset_path: <full path to piqa>
+      # TODO: Investigate why nq_open has error on Lanta
+      # - task: nq_open
+      #   dataset_path: <full path to nq_open>
+      #   num_fewshot: 5
+      - task: hellaswag
+        dataset_path: <full path to hellaswag>
+  validation:
+    max_steps: 100

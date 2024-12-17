@@ -55,7 +55,11 @@ def reverse_map_state_dict_qwen(mapped_state_dict):
     return source_state_dict
 
 
-def main(consolidated_checkpoint_path: str, output_path: str, original_path: str, hf_token: str):
+def main(
+        consolidated_checkpoint_path: str,
+        output_path: str, 
+        original_path: str,
+    ):
     checkpoint_path = os.path.join(consolidated_checkpoint_path, 'consolidated.00.pth')
     state_dict = torch.load(checkpoint_path)
     
@@ -75,8 +79,8 @@ def main(consolidated_checkpoint_path: str, output_path: str, original_path: str
 
     tokenizer = AutoTokenizer.from_pretrained(consolidated_checkpoint_path)
 
-    tokenizer.push_to_hub(output_path, token=hf_token)
-    model.push_to_hub(output_path, token=hf_token)
+    tokenizer.save_pretrained(output_path)
+    model.save_pretrained(output_path)
 
 
 if __name__ == "__main__":
@@ -84,8 +88,7 @@ if __name__ == "__main__":
     parser.add_argument("chkpt", type=str)
     parser.add_argument("output", type=str)
     parser.add_argument("original_path", type=str)
-    parser.add_argument("hf_token", type=str)
 
     args = parser.parse_args()
 
-    main(args.chkpt, args.output, args.original_path, args.hf_token)
+    main(args.chkpt, args.output, args.original_path)

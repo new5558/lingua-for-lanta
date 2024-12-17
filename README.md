@@ -106,36 +106,51 @@ or
 python -m lingua.stool script=apps.main.train config=apps/main/configs/lanta_finetune_1B_qwen.yaml nodes=<num_nodes> partition=gpu project_name=<project_name> time=02:00:00
 ```
 
-### Push to hub
+### Convert Checkpoint to Hugggingface Format
 
 #### Llama3
 
+We need to run checkpoint conversion in SLURM to avoid OOM.
+
+1. Edit `<PROJECT_NAME>` in `setup/convert_dcp_checkpoint_llama.sh`
+2. Run Command
+
 ```sh
-sh setup/convert_dcp_checkpoint_llama.sh \
+sbatch setup/convert_dcp_checkpoint_llama.sh \
    <CONDA_PATH> \
    <LINGUA_CHECKPOINT_PATH> \
    <TOKENIZER_DIR> \
-   <HF_TOKEN> \
-   <PUSH_HF_REPO>
 ```
 
 - `<LINGUA_CHECKPOINT_PATH>` example: <full_path>/checkpoints/0000000300
 - `<TOKENIZER_DIR>` example: <full_path>/tokenizer_file_llama3/original/
-- `<PUSH_HF_REPO>` hf repository example: lst-nectec/llama-1b-finetuned
 
 #### Qwen2
 
+We need to run checkpoint conversion in SLURM to avoid OOM.
+
+1. Edit `<PROJECT_NAME>` in `setup/convert_dcp_checkpoint_qwen.sh`
+2. Run Command
+
 ```sh
-sh setup/convert_dcp_checkpoint_qwen.sh \
+sbatch setup/convert_dcp_checkpoint_qwen.sh \
    <CONDA_PATH> \
    <LINGUA_CHECKPOINT_PATH> \
    <TOKENIZER_DIR> \
-   <HF_TOKEN> \
-   <PUSH_HF_REPO> \
    <ORIGINAL_QWEN_HF_PATH>
 ```
 
 - `<LINGUA_CHECKPOINT_PATH>` example: <full_path>/checkpoints/0000000300
 - `<TOKENIZER_DIR>` example: <full_path>/tokenizer_file_qwen2
-- `<PUSH_HF_REPO>` hf repository example: lst-nectec/llama-1b-finetuned
 - `<ORIGINAL_QWEN_HF_PATH>` full path to original qwen huggingface checkpoint example: <full_path>/Qwen2.5-1.5B
+
+### Upload to Huggingface
+
+Prerequisite: Convert Checkpoint to Huggingface Format
+
+```sh
+huggingface-cli upload --token <HF_TOKEN> <PUSH_HF_REPO> <LINGUA_CHECKPOINT_PATH>/hf .
+```
+
+- `<LINGUA_CHECKPOINT_PATH>` example: <full_path>/checkpoints/0000000300
+- `<PUSH_HF_REPO>` hf repository example: lst-nectec/llama-1b-finetuned

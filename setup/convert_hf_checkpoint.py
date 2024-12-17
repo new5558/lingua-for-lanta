@@ -1,9 +1,23 @@
 import argparse
 import os
+import glob
 
 import torch
 import torch.distributed.checkpoint as dcp
-from safetensors.torch import load_file
+from safetensors.torch import safe_open
+
+def load_file_support_multi(safetensors_files):
+    # Aggregated state_dict
+    aggregated_state_dict = {}
+
+    for file in safetensors_files:
+        # Open the safetensors file
+        with safe_open(file, framework="pt", device="cpu") as f:
+            for key in f.keys():
+                aggregated_state_dict[key] = f.get_tensor(key)
+    return aggregated_state_dict
+
+
 
 
 def map_state_dict_qwen(source_state_dict):
@@ -63,8 +77,8 @@ def main(consolidated_checkpoint_path: str, output_path: str, model_family: str)
         )
 
     elif model_family == 'qwen2':
-        checkpoint_path = os.path.join(consolidated_checkpoint_path, 'model.safetensors')
-        state_dict = load_file(checkpoint_path)
+        safetensors_files = glob.glob(os.path.join(consolidated_checkpoint_path, '*.safetensors'))
+        state_dict = load_file_support_multi(safetensors_files)
         state_dict = map_state_dict_qwen(state_dict)
     else: 
         raise NotImplementedError(f"{model_family} model family is not implemented")

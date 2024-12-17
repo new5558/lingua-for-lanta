@@ -1,12 +1,18 @@
 import argparse
+import os
 
 import torch
+from torch.distributed.checkpoint.format_utils import dcp_to_torch_save
+
 
 
 def main(input_path, output_path):
-    state_dict = torch.load(input_path)
+    save_path = os.path.join(output_path, 'consolidated.pth')
+    final_path = os.path.join(output_path, 'consolidated.00.pth')
     
-    state_dict = torch.save(state_dict['model'], output_path)
+    dcp_to_torch_save(input_path, save_path)
+    state_dict = torch.load(save_path)
+    state_dict = torch.save(state_dict['model'], final_path)
 
 
 
